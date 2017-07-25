@@ -8,7 +8,7 @@
 #if NANOCOAP_DEBUG
 #define ENABLE_DEBUG (1)
 #else
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG (1)
 #endif
 #include "debug.h"
 
@@ -335,8 +335,10 @@ size_t coap_put_option_uri(uint8_t *buf, uint16_t lastonum, const char *uri, uin
         }
 
         part_len = (uint8_t*)uripos - part_start;
+        DEBUG("nanocoap: part_len: %i\n", (int)part_len);
 
         if (part_len) {
+            DEBUG("nanocoap: putting option %i (last: %i)\n", (int)optnum, (int)lastnum);
             bufpos += coap_put_option(bufpos, lastonum, optnum, part_start, part_len);
             lastonum = optnum;
         }
