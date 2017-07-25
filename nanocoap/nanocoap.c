@@ -269,34 +269,39 @@ static uint32_t _decode_uint(uint8_t *pkt_pos, unsigned nbytes)
     return ntohl(res);
 }
 
-static unsigned _put_odelta(uint8_t *buf, unsigned lastonum, unsigned onum, unsigned olen)
+static unsigned _put_opt_len(uint8_t *buf, unsigned offset, unsigned shift, unsigned val)
 {
-    unsigned delta = onum - lastonum;
-    if (delta < 13) {
-        *buf = (uint8_t) ((delta << 4) | olen);
-        return 1;
-    } else if (delta == 13) {
-        *buf++ = (uint8_t) ((13 << 4) | olen);
-        *buf = delta - 13;
-        return 2;
-    } else {
-        *buf++ = (uint8_t) ((14 << 4) | olen);
-        uint16_t tmp = delta - 269;
-        tmp = htons(tmp);
-        memcpy(buf, &tmp, 2);
-        return 3;
+    if (val < 13) {
+        *buf |= (val << shift);
     }
+    else if (val < (256 + 13)) {
+        *buf |= (13 << shift);
+        buf[offset++] = (val - 13);
+    }
+    else {
+        *buf |= (14 << shift);
+        uint16_t tmp = (val - 269);
+        tmp = htons(tmp);
+        memcpy(buf + offset, &tmp, 2);
+        offset += 2;
+    }
+    return offset;
 }
 
 size_t coap_put_option(uint8_t *buf, uint16_t lastonum, uint16_t onum, uint8_t *odata, size_t olen)
 {
     assert(lastonum <= onum);
-    int n = _put_odelta(buf, lastonum, onum, olen);
+
+    unsigned delta = (onum - lastonum);
+    *buf = 0;
+
+    unsigned n = _put_opt_len(buf, 1, 4, delta);
+    n = _put_opt_len(buf, n, 0, olen);
     if(olen) {
         memcpy(buf + n, odata, olen);
         n += olen;
     }
-    return n;
+    return (size_t)n;
 }
 
 size_t coap_put_option_ct(uint8_t *buf, uint16_t lastonum, uint16_t content_type)
