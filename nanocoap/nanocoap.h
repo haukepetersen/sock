@@ -13,6 +13,7 @@
 
 #define COAP_OPT_URI_HOST       (3)
 #define COAP_OPT_OBSERVE        (6)
+#define COAP_OPT_LOCATION_PATH  (8)
 #define COAP_OPT_URI_PATH       (11)
 #define COAP_OPT_CONTENT_FORMAT (12)
 #define COAP_OPT_URI_QUERY      (15)
@@ -141,6 +142,7 @@ typedef struct {
     uint8_t url[NANOCOAP_URL_MAX];
     uint8_t qs[NANOCOAP_QS_MAX];
     uint8_t *token;
+    uint8_t *options;
     uint8_t *payload;
     unsigned payload_len;
     uint16_t content_type;
@@ -154,6 +156,12 @@ typedef struct {
     unsigned methods;
     coap_handler_t handler;
 } coap_resource_t;
+
+typedef struct {
+    uint16_t delta;
+    uint16_t len;
+    uint8_t *val;
+} coap_opt_t;
 
 extern const coap_resource_t coap_resources[];
 extern const unsigned coap_resources_numof;
@@ -174,6 +182,8 @@ ssize_t coap_build_hdr(coap_hdr_t *hdr, unsigned type, uint8_t *token, size_t to
 size_t coap_put_option(uint8_t *buf, uint16_t lastonum, uint16_t onum, uint8_t *odata, size_t olen);
 size_t coap_put_option_ct(uint8_t *buf, uint16_t lastonum, uint16_t content_type);
 size_t coap_put_option_uri(uint8_t *buf, uint16_t lastonum, const char *uri, uint16_t optnum);
+
+uint8_t *coap_find_opt(coap_pkt_t *pkt, uint8_t *bufpos, coap_opt_t *opt, uint16_t optnum);
 
 static inline unsigned coap_get_ver(coap_pkt_t *pkt)
 {
