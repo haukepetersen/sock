@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "nanocoap.h"
 
@@ -50,6 +51,7 @@ int coap_parse(coap_pkt_t *pkt, uint8_t *buf, size_t len)
     }
 
     /* parse options */
+    pkt->options = (pkt_pos != pkt_end) ? pkt_pos : NULL;
     int option_nr = 0;
     while (pkt_pos != pkt_end) {
         uint8_t option_byte = *pkt_pos++;
@@ -110,6 +112,13 @@ int coap_parse(coap_pkt_t *pkt, uint8_t *buf, size_t len)
 
             pkt_pos += option_len;
         }
+    }
+
+    /* set payload pointer to first byte after the options in case no payload
+     * is present, so we can use it as reference to find the end of options
+     * at a later point in time */
+    if (pkt_pos == pkt_end) {
+        pkt->payload = pkt_end;
     }
 
     DEBUG("coap pkt parsed. code=%u detail=%u payload_len=%u, 0x%02x\n",
@@ -374,4 +383,66 @@ ssize_t coap_well_known_core_default_handler(coap_pkt_t* pkt, uint8_t *buf, \
     unsigned payload_len = bufpos - payload;
 
     return coap_build_reply(pkt, COAP_CODE_205, buf, len, payload_len);
+}
+
+size_t get_lenval(uint8_t *buf, uint16_t *val)
+{
+    size_t len = 0;
+
+    if (*val == 13) {
+        *val += *buf;
+        len = 1;
+    }
+    else if (*val == 14) {
+        memcpy(val, buf, 2);
+        *val = htons(*val) + 269;
+        len = 2;
+    }
+
+    return len;
+}
+
+int parse_opt(uint8_t *optpos, coap_opt_t *opt)
+{
+    opt->val = optpos + 1;
+    opt->delta = ((*optpos & 0xf0) >> 4);
+    opt->len =  (*optpos & 0x0f);
+
+    /* make sure delta and len raw values are valid */
+    if ((opt->delta == 15) || (opt->len == 15)) {
+        return -1;
+    }
+
+    opt->val += get_lenval(opt->val, &opt->delta);
+    opt->val += get_lenval(opt->val, &opt->len);
+
+    return (opt->val - optpos) + opt->len;
+}
+
+uint8_t *coap_find_opt(coap_pkt_t *pkt, uint8_t *bufpos,
+                       coap_opt_t *opt, uint16_t optnum)
+{
+    assert(opt);
+
+    /* check if we reached the end of options */
+    if (!bufpos || (*bufpos == 0xff) || (bufpos == pkt->payload)) {
+        return NULL;
+    }
+
+    uint16_t delta = 0;
+
+    do {
+        int res = parse_opt(bufpos, opt);
+        if (res < 0) {
+            return NULL;
+        }
+        bufpos += res;
+        delta += opt->delta;
+    } while (delta < optnum);
+
+    if (delta != optnum) {
+        bufpos = NULL;
+    }
+
+    return bufpos;
 }
