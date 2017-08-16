@@ -412,7 +412,7 @@ static int _parse_opt(uint8_t *optpos, coap_opt_t *opt)
     return (opt->val - optpos) + opt->len;
 }
 
-uint8_t *coap_find_option(coap_pkt_t *pkt, uint8_t *bufpos,
+uint8_t *coap_find_option(uint8_t *payload_pos, uint8_t *bufpos,
                           coap_opt_t *opt, uint16_t optnum)
 {
     assert(opt);
@@ -425,7 +425,7 @@ uint8_t *coap_find_option(coap_pkt_t *pkt, uint8_t *bufpos,
     uint16_t delta = 0;
 
     do {
-        if (bufpos >= pkt->payload) {
+        if (bufpos >= payload_pos) {
             return NULL;
         }
         int res = _parse_opt(bufpos, opt);
