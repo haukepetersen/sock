@@ -378,7 +378,7 @@ ssize_t coap_well_known_core_default_handler(coap_pkt_t* pkt, uint8_t *buf, \
     return coap_build_reply(pkt, COAP_CODE_205, buf, len, payload_len);
 }
 
-size_t get_lenval(uint8_t *buf, uint16_t *val)
+static size_t _decode_optlen(uint8_t *buf, uint16_t *val)
 {
     size_t len = 0;
 
@@ -395,7 +395,7 @@ size_t get_lenval(uint8_t *buf, uint16_t *val)
     return len;
 }
 
-int parse_opt(uint8_t *optpos, coap_opt_t *opt)
+static int _parse_opt(uint8_t *optpos, coap_opt_t *opt)
 {
     opt->val = optpos + 1;
     opt->delta = ((*optpos & 0xf0) >> 4);
@@ -406,26 +406,29 @@ int parse_opt(uint8_t *optpos, coap_opt_t *opt)
         return -1;
     }
 
-    opt->val += get_lenval(opt->val, &opt->delta);
-    opt->val += get_lenval(opt->val, &opt->len);
+    opt->val += _decode_optlen(opt->val, &opt->delta);
+    opt->val += _decode_optlen(opt->val, &opt->len);
 
     return (opt->val - optpos) + opt->len;
 }
 
-uint8_t *coap_find_opt(coap_pkt_t *pkt, uint8_t *bufpos,
-                       coap_opt_t *opt, uint16_t optnum)
+uint8_t *coap_find_option(coap_pkt_t *pkt, uint8_t *bufpos,
+                          coap_opt_t *opt, uint16_t optnum)
 {
     assert(opt);
 
     /* check if we reached the end of options */
-    if (!bufpos || (*bufpos == 0xff) || (bufpos == pkt->payload)) {
+    if (!bufpos || (*bufpos == 0xff)) {
         return NULL;
     }
 
     uint16_t delta = 0;
 
     do {
-        int res = parse_opt(bufpos, opt);
+        if (bufpos >= pkt->payload) {
+            return NULL;
+        }
+        int res = _parse_opt(bufpos, opt);
         if (res < 0) {
             return NULL;
         }

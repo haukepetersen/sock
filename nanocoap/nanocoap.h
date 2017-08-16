@@ -183,7 +183,7 @@ size_t coap_put_option(uint8_t *buf, uint16_t lastonum, uint16_t onum, uint8_t *
 size_t coap_put_option_ct(uint8_t *buf, uint16_t lastonum, uint16_t content_type);
 size_t coap_put_option_uri(uint8_t *buf, uint16_t lastonum, const char *uri, uint16_t optnum);
 
-uint8_t *coap_find_opt(coap_pkt_t *pkt, uint8_t *bufpos, coap_opt_t *opt, uint16_t optnum);
+uint8_t *coap_find_option(coap_pkt_t *pkt, uint8_t *bufpos, coap_opt_t *opt, uint16_t optnum);
 
 static inline unsigned coap_get_ver(coap_pkt_t *pkt)
 {
